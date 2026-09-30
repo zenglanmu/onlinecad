@@ -10,7 +10,7 @@
 
 import { Download } from '@element-plus/icons-vue'
 import { createSharesClient, type PublicShare } from '@onlinecad/api-contract'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, shallowRef } from 'vue'
 
 import { loadCadRuntime, type CadRuntime } from '../lib/cad'
 import { cadVersionLabel, formatBytes, formatCount, formatDateTime } from '../lib/format'
@@ -22,8 +22,12 @@ const sharesClient = createSharesClient()
 
 const info = ref<PublicShare | null>(null)
 const file = ref<File | null>(null)
-/** The viewer + engine, loaded lazily with the shared drawing. */
-const cadRuntime = ref<CadRuntime | null>(null)
+/** The viewer + engine, loaded lazily with the shared drawing.
+ *
+ * `shallowRef` keeps the engine opaque: wrapped in a deep ref it would become a
+ * reactive `Proxy` and its private members would fail the brand check.
+ */
+const cadRuntime = shallowRef<CadRuntime | null>(null)
 const error = ref<string | null>(null)
 const loading = ref(true)
 

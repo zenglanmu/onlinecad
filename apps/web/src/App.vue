@@ -14,7 +14,7 @@
 import { Collection, Download, Files, InfoFilled } from '@element-plus/icons-vue'
 import { shareUrl, type Drawing } from '@onlinecad/api-contract'
 import { ElMessage } from 'element-plus'
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 
 import AboutDialog from './components/AboutDialog.vue'
 import DrawingLibraryDrawer from './components/DrawingLibraryDrawer.vue'
@@ -49,8 +49,13 @@ const localInfo = ref<LocalDrawingInfo | null>(null)
 /**
  * The CAD stack (viewer component + engine), resolved on the first open. `null`
  * on the welcome screen, so no engine work happens until a drawing is chosen.
+ *
+ * `shallowRef`, not `ref`: the engine class uses ECMAScript private members, and
+ * a deep ref would hand out a reactive `Proxy` whose `this` fails the private
+ * brand check (`can't access private field or method`). The runtime is an opaque
+ * handle, so only the null → object transition needs to be reactive.
  */
-const cadRuntime = ref<CadRuntime | null>(null)
+const cadRuntime = shallowRef<CadRuntime | null>(null)
 /** Bumped per open so `MlCadViewer` remounts and reloads the new file. */
 const viewerKey = ref(0)
 const saving = ref(false)

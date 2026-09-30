@@ -11,7 +11,7 @@
  * and everything else to the editor.
  */
 
-import { ArrowDown, ArrowUp, Collection, Download, Files, InfoFilled } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowUp, Collection, Download, Files, InfoFilled, Link } from '@element-plus/icons-vue'
 import { shareUrl, type Drawing } from '@onlinecad/api-contract'
 import { ElMessage } from 'element-plus'
 import { onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
@@ -106,6 +106,8 @@ const shareToken = ref<string | null>(readShareToken())
 const shareTarget = ref<Drawing | null>(null)
 const shareDialogVisible = ref(false)
 const sharing = ref(false)
+/** True while the share button registers the drawing before opening the prompt. */
+const preparingShare = ref(false)
 
 onMounted(() => {
   // The share page talks only to the share API; it has no register to warm up.
@@ -183,28 +185,39 @@ async function analyse(file: File, engine: DrawingInspector): Promise<void> {
   }
 }
 
+/**
+ * Ensure the open file has a register entry and return it.
+ *
+ * Shared by the save and share buttons: a share link always hangs off a drawing
+ * record, and saving is idempotent by content fingerprint, so registering again
+ * before sharing never creates a duplicate.
+ */
+async function ensureRegistered(file: File): Promise<Drawing> {
+  // A file can only be open once the runtime loaded, but resolve defensively
+  // so the register path never assumes engine state.
+  const engine = cadRuntime.value?.engine ?? (await loadCadRuntime()).engine
+  const info = localInfo.value ?? (await inspectLocalFile(file, engine))
+  localInfo.value = info
+  return save({
+    name: file.name,
+    format: info.format,
+    sizeBytes: info.sizeBytes,
+    contentHash: info.contentHash,
+    cadVersion: info.summary.version,
+    entityCount: info.summary.entityCount,
+    layerCount: info.summary.layerCount,
+    layerNames: info.summary.layerNames,
+    entityTypes: info.summary.entityTypes
+  })
+}
+
 async function saveToLibrary(): Promise<void> {
   const file = currentFile.value
   if (!file) return
 
   saving.value = true
   try {
-    // A file can only be open once the runtime loaded, but resolve defensively
-    // so the register path never assumes engine state.
-    const engine = cadRuntime.value?.engine ?? (await loadCadRuntime()).engine
-    const info = localInfo.value ?? (await inspectLocalFile(file, engine))
-    localInfo.value = info
-    const drawing = await save({
-      name: file.name,
-      format: info.format,
-      sizeBytes: info.sizeBytes,
-      contentHash: info.contentHash,
-      cadVersion: info.summary.version,
-      entityCount: info.summary.entityCount,
-      layerCount: info.summary.layerCount,
-      layerNames: info.summary.layerNames,
-      entityTypes: info.summary.entityTypes
-    })
+    const drawing = await ensureRegistered(file)
     ElMessage.success('已存入图纸台账')
 
     if (drawing.share) {
@@ -219,6 +232,35 @@ async function saveToLibrary(): Promise<void> {
     ElMessage.error(describeError(cause))
   } finally {
     saving.value = false
+  }
+}
+
+/**
+ * Open the share prompt for the open drawing.
+ *
+ * The link hangs off the register entry's id, so this registers the metadata
+ * first (idempotently, without the "saved" toast) and only then asks for
+ * confirmation. An already-shared drawing is pointed at the library instead of
+ * uploading a second copy.
+ */
+async function shareCurrent(): Promise<void> {
+  const file = currentFile.value
+  if (!file) return
+
+  preparingShare.value = true
+  try {
+    const drawing = await ensureRegistered(file)
+    if (drawing.share) {
+      ElMessage.info('该图纸已有分享链接，可在「图纸台账」中复制或取消分享。')
+      libraryVisible.value = true
+    } else {
+      shareTarget.value = drawing
+      shareDialogVisible.value = true
+    }
+  } catch (cause) {
+    ElMessage.error(describeError(cause))
+  } finally {
+    preparingShare.value = false
   }
 }
 
@@ -320,6 +362,9 @@ function closeDrawing(): void {
         <template v-if="currentFile">
           <el-button :icon="Collection" :loading="saving" @click="saveToLibrary">
             存入台账
+          </el-button>
+          <el-button :icon="Link" :loading="preparingShare" @click="shareCurrent">
+            分享文件
           </el-button>
           <el-button type="primary" :icon="Download" :loading="exporting" @click="exportDwg">
             导出 DWG

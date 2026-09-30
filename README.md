@@ -113,7 +113,7 @@ DWG ──acadrust(WASM)──▶ DXF ──@mlightcad/data-model──▶ AcDbD
 
 **分享（可选，唯一的出网通路）**
 
-1. 存入台账后弹出确认框，说明「这一步会把原始文件上传到云端」，并选择有效期。
+1. 打开图纸后点顶栏「分享文件」，或先「存入台账」——两条路径都会弹出确认框，说明「这一步会把原始文件上传到云端」，并选择有效期。
 2. 用户确认后，前端把原始 `File` 作为请求体 `POST /api/drawings/:id/share`；Worker 直接把流写入 R2 的 `shares/<token>`，不经过内存缓冲。
 3. token 是 256 位随机值，写回 D1 的 `share_token` 列；`/s/<token>` 提供只读页面。
 4. `DELETE /api/drawings/:id/share` 或删除台账记录都会删除 R2 对象并让链接失效。

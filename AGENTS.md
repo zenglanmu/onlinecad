@@ -46,7 +46,6 @@ npm run db:migrate:local  # once, before first worker dev
 npm run dev:worker        # wrangler dev: simulated local D1+R2, 0.0.0.0:8787
 npm run dev               # Vite 5173, proxies /api -> 8787
 npm run dev:host          # Vite bound to 0.0.0.0 (LAN access)
-npm run typecheck         # all workspaces (web uses vue-tsc)
 npm test                  # cad-acadrust integration tests (real WASM, Node)
 npm run fixtures          # regenerate fixtures via cargo (committed already)
 npm run build             # production SPA build
@@ -87,7 +86,7 @@ server or the built Worker) headlessly, use the user-local Chromium documented a
 
 `.github/workflows/ci.yml` runs `rust` first (fmt, clippy `-D warnings`, lib
 tests, build WASM, upload artifact) then `node` (`npm ci`, download artifact,
-`npm run typecheck`, `npm test`, `npm run build`). Preserve that order.
+typecheck, `npm test`, `npm run build`). Preserve that order.
 
 ## Dev / env gotchas
 
@@ -101,12 +100,14 @@ tests, build WASM, upload artifact) then `node` (`npm ci`, download artifact,
   bucket names in `apps/worker/wrangler.jsonc`.
 - **Never expose the Vite dev server publicly** — it serves source and `/@fs/`
   reads local files. Share via `npm run build` + `npm run dev:worker`, or deploy.
+- Do **not** run `npm run typecheck` locally: vue-tsc over the whole workspace
+  overflows memory. CI runs the typecheck step; rely on that.
 
 ## Code conventions that differ from defaults
 
 - Every tsconfig sets `verbatimModuleSyntax` + `isolatedModules` + `strict` +
-  `noUnused*`. Use `import type` for type-only imports or `npm run typecheck`
-  fails.
+  `noUnused*`. Use `import type` for type-only imports; `verbatimModuleSyntax`
+  rejects a value import that is only used as a type.
 - Vite `dedupe`s vue/vue-i18n/element-plus/three/`@mlightcad/data-model`, and
   `manualChunks` pins one Rollup chunk per `@mlightcad/*` package and `three`;
   this is required for correct runtime module order, not just bundle size. The

@@ -11,7 +11,7 @@
  * and everything else to the editor.
  */
 
-import { Collection, Download, Files, InfoFilled } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowUp, Collection, Download, Files, InfoFilled } from '@element-plus/icons-vue'
 import { shareUrl, type Drawing } from '@onlinecad/api-contract'
 import { ElMessage } from 'element-plus'
 import { onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
@@ -63,6 +63,32 @@ const exporting = ref(false)
 const libraryVisible = ref(false)
 const aboutVisible = ref(false)
 const filePicker = ref<HTMLInputElement | null>(null)
+
+/**
+ * Header visibility. The bar can hide completely so the drawing (or the welcome
+ * screen) gets the whole viewport; a floating button brings it back. The choice
+ * is remembered, so a user who prefers the extra space sets it once.
+ */
+const HEADER_COLLAPSED_KEY = 'onlinecad.header.collapsed'
+
+function readHeaderCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(HEADER_COLLAPSED_KEY) === '1'
+  } catch {
+    // Storage can be unavailable (private mode, blocked cookies): start expanded.
+    return false
+  }
+}
+
+const headerCollapsed = ref(readHeaderCollapsed())
+
+watch(headerCollapsed, (collapsed) => {
+  try {
+    window.localStorage.setItem(HEADER_COLLAPSED_KEY, collapsed ? '1' : '0')
+  } catch {
+    // Persisting is a nicety; the in-memory state already holds the choice.
+  }
+})
 
 /**
  * `/s/<token>` is the public share page; every other path is the editor. A
@@ -275,7 +301,7 @@ function closeDrawing(): void {
   <ShareView v-if="shareToken" :token="shareToken" />
 
   <div v-else class="shell">
-    <header class="appbar">
+    <header v-show="!headerCollapsed" class="appbar">
       <div class="appbar__brand">
         <span class="appbar__logo" aria-hidden="true">◈</span>
         <span class="appbar__titles">
@@ -302,8 +328,31 @@ function closeDrawing(): void {
         </template>
 
         <el-button text :icon="InfoFilled" aria-label="关于" @click="aboutVisible = true" />
+
+        <el-button
+          class="appbar__collapse"
+          text
+          :icon="ArrowUp"
+          title="收起标题栏"
+          @click="headerCollapsed = true"
+        >
+          收起<span class="appbar__collapse-label">标题栏</span>
+        </el-button>
       </div>
     </header>
+
+    <!-- Shown only while the header is hidden; top-centre keeps it clear of the
+         viewer's interactive ribbon controls. -->
+    <el-button
+      v-show="headerCollapsed"
+      class="header-restore"
+      type="primary"
+      :icon="ArrowDown"
+      title="展开标题栏"
+      @click="headerCollapsed = false"
+    >
+      展开标题栏
+    </el-button>
 
     <main class="stage">
       <WelcomeScreen

@@ -8,7 +8,14 @@
 import type { DrawingFormat } from '@onlinecad/api-contract'
 import type { DrawingSummary } from '@onlinecad/cad-acadrust'
 
-import { acadrustEngine } from './acadrust'
+/**
+ * The slice of the acadrust engine that metadata parsing needs. Typed
+ * structurally so this module (imported by the welcome screen) does not pull in
+ * the lazily loaded CAD runtime or its class.
+ */
+export interface DrawingInspector {
+  inspect(data: Uint8Array, isDwg: boolean): Promise<DrawingSummary>
+}
 
 export interface LocalDrawingInfo {
   format: DrawingFormat
@@ -47,11 +54,16 @@ export async function sha256Hex(bytes: Uint8Array): Promise<string> {
  * Parse and fingerprint a local drawing.
  *
  * Parsing happens in the acadrust worker, so a large DWG does not block the UI
- * while the register entry is being prepared.
+ * while the register entry is being prepared. The engine is passed in by the
+ * caller so this module stays free of the (lazily loaded) CAD runtime and can be
+ * imported by the welcome screen without pulling the engine in.
  *
  * @throws if the extension is unsupported or the file is not a readable drawing.
  */
-export async function inspectLocalFile(file: File): Promise<LocalDrawingInfo> {
+export async function inspectLocalFile(
+  file: File,
+  engine: DrawingInspector
+): Promise<LocalDrawingInfo> {
   const format = detectDrawingFormat(file.name)
   if (!format) {
     throw new Error(`不支持的文件类型：${file.name}（仅支持 .dwg 与 .dxf）`)
@@ -61,7 +73,7 @@ export async function inspectLocalFile(file: File): Promise<LocalDrawingInfo> {
 
   // Independent work: the worker conversion and the digest can overlap.
   const [summary, contentHash] = await Promise.all([
-    acadrustEngine.inspect(bytes, format === 'dwg'),
+    engine.inspect(bytes, format === 'dwg'),
     sha256Hex(bytes)
   ])
 

@@ -7,6 +7,8 @@
  */
 
 :root {
+  /* The app chrome is light regardless of the drawing's colour theme. */
+  color-scheme: light;
   --oc-appbar: #0f172a;
   --oc-appbar-text: #e2e8f0;
   --oc-appbar-muted: #94a3b8;
@@ -31,6 +33,34 @@ body,
   margin: 0;
 }
 
+/*
+ * `@mlightcad/cad-viewer` ships a global `body { display: flex }`, which makes
+ * `#app` a flex item that stretches to its content's min-content width. Pin it
+ * to the viewport so a wide toolbar scrolls inside itself instead of widening
+ * the page — `.shell` clips the overflow, so those controls would be lost.
+ */
+#app {
+  width: 100%;
+  min-width: 0;
+  /* Mobile browser chrome grows/shrinks the visual viewport; `dvh` follows it
+     so the canvas and overlays are never cut off behind the address bar. */
+  height: 100vh;
+  height: 100dvh;
+}
+
+/*
+ * Kill the 300ms double-tap delay and accidental double-tap zoom on controls.
+ * The CAD canvas is deliberately excluded so the viewer keeps its own gestures.
+ */
+button,
+[role='button'],
+a,
+label,
+.el-button,
+.el-tag {
+  touch-action: manipulation;
+}
+
 body {
   font-family:
     system-ui,
@@ -42,6 +72,11 @@ body {
     sans-serif;
   color: var(--oc-text);
   background: var(--oc-canvas);
+  /* Keep mobile text legible after orientation changes and stop the canvas
+     gestures from triggering the browser's pull-to-refresh. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior: none;
 }
 
 .shell {
@@ -58,8 +93,12 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  flex: 0 0 var(--oc-appbar-height);
-  padding: 0 16px;
+  flex: 0 0 auto;
+  /* Grow past the nominal height on notched devices so the content is never
+     squeezed under the status bar. */
+  min-height: calc(var(--oc-appbar-height) + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) 0
+    max(16px, env(safe-area-inset-left, 0px));
   background: var(--oc-appbar);
   color: var(--oc-appbar-text);
   z-index: 10;
@@ -380,6 +419,13 @@ body {
   line-height: 1.6;
 }
 
+.library__tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
 .library__filters {
   display: flex;
   gap: 8px;
@@ -500,6 +546,7 @@ body {
   flex-direction: column;
   gap: 6px;
   padding-top: 10px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   border-top: 1px solid var(--oc-border);
 }
 
@@ -589,8 +636,10 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  flex: 0 0 var(--oc-appbar-height);
-  padding: 0 16px;
+  flex: 0 0 auto;
+  min-height: calc(var(--oc-appbar-height) + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) 0
+    max(16px, env(safe-area-inset-left, 0px));
   background: var(--oc-appbar);
   color: var(--oc-appbar-text);
 }
@@ -683,20 +732,241 @@ body {
 
 /* ------------------------------------------------------------- responsive */
 
+/*
+ * Overlays (the drawing register drawer, the share/about/edit dialogs) already
+ * shrink on small screens because their widths use `min(<size>, <viewport>)`.
+ * These rules only tighten the surrounding spacing and enlarge touch targets.
+ */
+
+/* Tablet: collapse the welcome two-column layout and let the app bar breathe. */
 @media (max-width: 1024px) {
   .welcome {
     grid-template-columns: minmax(0, 1fr);
-    padding: 18px;
+    gap: 18px;
+    padding: 20px;
   }
 
   .appbar {
+    /* `height: auto` alone would not win against a fixed flex-basis. */
+    flex: 0 0 auto;
     flex-wrap: wrap;
     height: auto;
     min-height: var(--oc-appbar-height);
-    padding: 8px 12px;
+    padding: 8px max(12px, env(safe-area-inset-right, 0px)) 8px
+      max(12px, env(safe-area-inset-left, 0px));
   }
 
   .appbar__titles small {
     display: none;
+  }
+}
+
+/* Phones. */
+@media (max-width: 640px) {
+  /* The header actions move to their own row and scroll horizontally, so the
+     labels stay readable instead of wrapping the header into a tall stack. */
+  .appbar {
+    gap: 6px 8px;
+    padding-top: calc(8px + env(safe-area-inset-top, 0px));
+  }
+
+  .appbar__actions {
+    flex: 1 1 100%;
+    /* Without this, `min-width: auto` keeps the row at its content width and it
+       overflows the header instead of scrolling inside it. */
+    min-width: 0;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 2px 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .appbar__actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .appbar__actions > * {
+    flex: 0 0 auto;
+  }
+
+  .appbar .el-button {
+    min-height: 34px;
+  }
+
+  /* Welcome screen */
+  .welcome {
+    gap: 16px;
+    padding: 16px 14px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .welcome__hero h1 {
+    font-size: 22px;
+  }
+
+  .welcome__lede {
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+
+  .dropzone {
+    min-height: 170px;
+    padding: 22px 14px;
+  }
+
+  .welcome__facts {
+    padding-left: 16px;
+    font-size: 12.5px;
+  }
+
+  .welcome__side {
+    padding: 14px;
+  }
+
+  /* Drawing register */
+  .library {
+    gap: 10px;
+  }
+
+  .library-drawer .el-drawer__body {
+    padding: 14px;
+  }
+
+  .library__header h2 {
+    font-size: 16px;
+  }
+
+  .library__subtitle {
+    font-size: 11.5px;
+  }
+
+  .library__tools .el-button {
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .entry__head .el-button {
+    min-width: 32px;
+    min-height: 32px;
+    padding: 6px;
+  }
+
+  .entry__facts {
+    gap: 8px 12px;
+  }
+
+  .entry__share .el-button {
+    min-height: 30px;
+  }
+
+  .library__footer {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Dialogs keep clear of the screen edges and sit higher up. */
+  .el-dialog {
+    --el-dialog-margin-top: 6vh;
+    --el-dialog-padding-primary: 14px;
+  }
+
+  /* iOS Safari zooms the whole page when a field below 16px gains focus.
+     The extra `.el-input`/`.el-textarea`/`.el-select` ancestor is needed to beat
+     the viewer's bundled `.el-input__inner { font-size: inherit }` rule. */
+  .el-input .el-input__inner,
+  .el-input .el-input__wrapper,
+  .el-textarea .el-textarea__inner,
+  .el-select .el-select__wrapper {
+    font-size: 16px;
+  }
+
+  /* Shared drawing page */
+  .share-view__bar {
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    height: auto;
+    min-height: var(--oc-appbar-height);
+    gap: 8px;
+    padding: 8px max(12px, env(safe-area-inset-right, 0px)) 8px
+      max(12px, env(safe-area-inset-left, 0px));
+  }
+
+  .share-view__actions {
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+
+  .share-view__name {
+    max-width: 55vw;
+  }
+
+  .share-view__facts {
+    gap: 8px 16px;
+    padding: 10px 12px;
+  }
+
+  .stage__error {
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Narrow phones: stack the register filters so the search field stays usable. */
+@media (max-width: 480px) {
+  .library__filters {
+    flex-direction: column;
+  }
+
+  /* In a column flex box the row's fixed basis would become a height. */
+  .library__search,
+  .library__format {
+    flex: 1 1 auto;
+  }
+}
+
+/*
+ * Phones in landscape have plenty of width but very little height, so the
+ * vertical chrome has to give way to the viewer/register.
+ */
+@media (orientation: landscape) and (max-height: 520px) {
+  .appbar {
+    gap: 6px 10px;
+    padding-top: max(4px, env(safe-area-inset-top, 0px));
+    padding-bottom: 4px;
+    min-height: 0;
+  }
+
+  .appbar .el-button {
+    min-height: 30px;
+  }
+
+  .welcome {
+    gap: 12px;
+    padding: 12px 16px;
+  }
+
+  .welcome__hero h1 {
+    font-size: 20px;
+  }
+
+  .welcome__lede {
+    margin-bottom: 12px;
+  }
+
+  .dropzone {
+    min-height: 120px;
+    padding: 16px 14px;
+  }
+
+  /* The architecture notes are the first thing to sacrifice for canvas space. */
+  .welcome__facts {
+    display: none;
+  }
+
+  .about h3 {
+    margin-top: 12px;
   }
 }

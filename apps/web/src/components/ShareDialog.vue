@@ -45,7 +45,7 @@ function submit(): void {
   <el-dialog
     v-model="visible"
     title="生成分享链接？"
-    width="460px"
+    width="min(460px, 92vw)"
     :close-on-click-modal="!busy"
     :close-on-press-escape="!busy"
     :show-close="!busy"

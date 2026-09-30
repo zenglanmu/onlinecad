@@ -8,17 +8,21 @@
  * alongside newer glue.
  */
 
-import { EXPECTED_ABI_VERSION, loadAcadrustWasm } from '@onlinecad/cad-acadrust'
 import { ref, watch } from 'vue'
 
 const visible = defineModel<boolean>({ required: true })
 
 const engineVersion = ref<string | null>(null)
 const engineError = ref<string | null>(null)
+/** Expected WASM ABI, read from the lazily imported engine package. */
+const abiVersion = ref<number | null>(null)
 
 watch(visible, async open => {
   if (!open || engineVersion.value !== null || engineError.value !== null) return
   try {
+    // Imported on open so the start-up page never pulls in the engine package.
+    const { EXPECTED_ABI_VERSION, loadAcadrustWasm } = await import('@onlinecad/cad-acadrust')
+    abiVersion.value = EXPECTED_ABI_VERSION
     const wasm = await loadAcadrustWasm()
     engineVersion.value = wasm.acadrustVersion
   } catch (cause) {
@@ -28,7 +32,7 @@ watch(visible, async open => {
 </script>
 
 <template>
-  <el-dialog v-model="visible" title="关于 OnlineCAD" width="560px">
+  <el-dialog v-model="visible" title="关于 OnlineCAD" width="min(560px, 92vw)">
     <div class="about">
       <p>
         一个完全在浏览器中运行的 DWG/DXF 查看与编辑应用。图纸文件默认不会离开你的设备，
@@ -45,7 +49,9 @@ watch(visible, async open => {
           <span class="about__muted">· MPL-2.0 · DWG R13–R2018 读写</span>
         </li>
         <li>
-          <strong>WASM ABI</strong><span>v{{ EXPECTED_ABI_VERSION }}</span>
+          <strong>WASM ABI</strong>
+          <span v-if="abiVersion !== null">v{{ abiVersion }}</span>
+          <span v-else>读取中…</span>
           <span class="about__muted">· 版本不匹配时会拒绝加载</span>
         </li>
         <li>

@@ -10,7 +10,7 @@
  * cannot. Entries that *have* been shared show their link and a revoke action.
  */
 
-import { CloseBold, Delete, Edit, Link, Refresh, Search } from '@element-plus/icons-vue'
+import { Close, CloseBold, Delete, Edit, Link, Refresh, Search } from '@element-plus/icons-vue'
 import { shareUrl, type Drawing } from '@onlinecad/api-contract'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reactive, ref } from 'vue'
@@ -133,7 +133,13 @@ function totalEntities(list: Drawing[]): number {
 </script>
 
 <template>
-  <el-drawer v-model="visible" size="560px" :with-header="false" class="library-drawer">
+  <!-- `min()` keeps the register full-width on phones and 560px on desktop. -->
+  <el-drawer
+    v-model="visible"
+    size="min(560px, 100%)"
+    :with-header="false"
+    class="library-drawer"
+  >
     <div class="library">
       <header class="library__header">
         <div>
@@ -144,7 +150,19 @@ function totalEntities(list: Drawing[]): number {
             {{ formatCount(totalEntities(items)) }} 个图元。
           </p>
         </div>
-        <el-button :icon="Refresh" circle :loading="loading" @click="refresh" />
+        <div class="library__tools">
+          <el-button
+            :icon="Refresh"
+            circle
+            aria-label="刷新"
+            :loading="loading"
+            @click="refresh"
+          />
+          <!-- The drawer has no built-in header, so on phones (where it fills
+               the screen and the dismiss overlay is unreachable) this is the
+               only way to close it. -->
+          <el-button :icon="Close" circle aria-label="关闭" @click="visible = false" />
+        </div>
       </header>
 
       <dl v-if="stats && stats.topLayers.length > 0" class="stat-grid stat-grid--compact">
@@ -281,7 +299,7 @@ function totalEntities(list: Drawing[]): number {
     <el-dialog
       :model-value="editing !== null"
       title="编辑台账记录"
-      width="420px"
+      width="min(420px, 92vw)"
       append-to-body
       @update:model-value="closeEditor"
     >

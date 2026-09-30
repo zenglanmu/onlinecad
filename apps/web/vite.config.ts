@@ -101,6 +101,32 @@ export default defineConfig({
           if (mlightcad) return `mlightcad-${mlightcad[1]}`
           // THREE is shared by the viewer, the renderer and the exporters.
           if (/node_modules\/three\//.test(id)) return 'three'
+          /**
+           * The framework runtime, in its own always-loaded chunk.
+           *
+           * This is load-bearing for laziness, not just bundle hygiene. The
+           * eager shell needs Vue and Element Plus; `@mlightcad/cad-viewer`
+           * needs them too. Left to Rollup's defaults they get folded into the
+           * cad-viewer chunk, which makes the entry statically import that
+           * chunk — preloading the whole viewer + THREE graph on the start-up
+           * page and defeating the lazy `import()` in `lib/cad.ts`. Pinning them
+           * to `vendor` leaves the entry with no edge to any `mlightcad-*` chunk.
+           */
+          if (
+            /node_modules\/(vue|@vue|vue-i18n|element-plus|@element-plus|@vueuse|lodash-es)\//.test(
+              id
+            )
+          ) {
+            return 'vendor'
+          }
+          /**
+           * Vite's dynamic-import preload helper is a virtual module shared by
+           * every chunk that lazy-loads. If Rollup parks it inside a lazily
+           * loaded chunk, the eager entry gains a static edge to that chunk and
+           * ends up preloading it again. Pin it to the always-loaded vendor
+           * chunk so the helper lives on the eager side of the boundary.
+           */
+          if (id.includes('vite/preload-helper')) return 'vendor'
           return undefined
         }
       }

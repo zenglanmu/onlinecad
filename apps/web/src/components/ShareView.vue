@@ -9,11 +9,10 @@
  */
 
 import { Download } from '@element-plus/icons-vue'
-import { AcEdOpenMode } from '@mlightcad/cad-simple-viewer'
-import { MlCadViewer } from '@mlightcad/cad-viewer'
 import { createSharesClient, type PublicShare } from '@onlinecad/api-contract'
 import { computed, onMounted, ref } from 'vue'
 
+import { loadCadRuntime, type CadRuntime } from '../lib/cad'
 import { cadVersionLabel, formatBytes, formatCount, formatDateTime } from '../lib/format'
 import { describeError } from '../store/drawings'
 
@@ -23,6 +22,8 @@ const sharesClient = createSharesClient()
 
 const info = ref<PublicShare | null>(null)
 const file = ref<File | null>(null)
+/** The viewer + engine, loaded lazily with the shared drawing. */
+const cadRuntime = ref<CadRuntime | null>(null)
 const error = ref<string | null>(null)
 const loading = ref(true)
 
@@ -44,6 +45,10 @@ async function load(): Promise<void> {
       throw new Error(`图纸下载失败（HTTP ${response.status}）`)
     }
     const blob = await response.blob()
+
+    // Load the viewer/engine only now that there is a drawing to show.
+    const runtime = cadRuntime.value ?? (await loadCadRuntime())
+    cadRuntime.value = runtime
 
     info.value = detail
     file.value = new File([blob], detail.share.fileName, {
@@ -125,10 +130,12 @@ async function load(): Promise<void> {
         </dl>
 
         <div class="share-view__viewer">
-          <MlCadViewer
+          <component
+            :is="cadRuntime.MlCadViewer"
+            v-if="cadRuntime"
             :local-file="file"
             locale="zh"
-            :mode="AcEdOpenMode.Read"
+            :mode="cadRuntime.AcEdOpenMode.Read"
             :progressive-rendering="true"
           />
         </div>

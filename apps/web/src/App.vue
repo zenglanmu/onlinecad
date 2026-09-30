@@ -12,9 +12,6 @@
  */
 
 import { Collection, Download, Files, InfoFilled } from '@element-plus/icons-vue'
-import { AcApDocManager, AcEdOpenMode } from '@mlightcad/cad-simple-viewer'
-import { MlCadViewer } from '@mlightcad/cad-viewer'
-import { DXF_VERSION_AC1032 } from '@onlinecad/cad-acadrust'
 import { shareUrl, type Drawing } from '@onlinecad/api-contract'
 import { ElMessage } from 'element-plus'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
@@ -24,12 +21,13 @@ import DrawingLibraryDrawer from './components/DrawingLibraryDrawer.vue'
 import ShareDialog from './components/ShareDialog.vue'
 import ShareView from './components/ShareView.vue'
 import WelcomeScreen from './components/WelcomeScreen.vue'
-import { acadrustEngine } from './lib/acadrust'
+import { loadCadRuntime, type CadRuntime } from './lib/cad'
 import { copyText } from './lib/clipboard'
 import { downloadBytes } from './lib/download'
 import {
   detectDrawingFormat,
   inspectLocalFile,
+  type DrawingInspector,
   type LocalDrawingInfo
 } from './lib/drawingFile'
 import { replaceExtension } from './lib/format'
@@ -48,6 +46,11 @@ const {
 const currentFile = ref<File | null>(null)
 /** Metadata for the open file, filled in by the background parse. */
 const localInfo = ref<LocalDrawingInfo | null>(null)
+/**
+ * The CAD stack (viewer component + engine), resolved on the first open. `null`
+ * on the welcome screen, so no engine work happens until a drawing is chosen.
+ */
+const cadRuntime = ref<CadRuntime | null>(null)
 /** Bumped per open so `MlCadViewer` remounts and reloads the new file. */
 const viewerKey = ref(0)
 const saving = ref(false)
@@ -97,28 +100,43 @@ function onPickerChange(event: Event): void {
   const file = input.files?.[0]
   // Reset so picking the same file twice still fires a change event.
   input.value = ''
-  if (file) openFile(file)
+  if (file) void openFile(file)
 }
 
-function openFile(file: File): void {
+/**
+ * Open a drawing. The CAD stack is loaded first, so the engine/worker are paid
+ * for only when a file is actually chosen and the DWG converter is guaranteed
+ * to be registered before the viewer mounts.
+ */
+async function openFile(file: File): Promise<void> {
   if (!detectDrawingFormat(file.name)) {
     ElMessage.error('仅支持 .dwg 与 .dxf 图纸')
     return
   }
+
+  let runtime: CadRuntime
+  try {
+    runtime = cadRuntime.value ?? (await loadCadRuntime())
+  } catch (cause) {
+    ElMessage.error(`无法加载图纸引擎：${describeError(cause)}`)
+    return
+  }
+  cadRuntime.value = runtime
+
   currentFile.value = file
   localInfo.value = null
   viewerKey.value += 1
   libraryVisible.value = false
-  void analyse(file)
+  void analyse(file, runtime.engine)
 }
 
 /**
  * Parse the file in the background. Doing it up front means "存入台账" is
  * instant and a fragmentary drawing can be reported as soon as it opens.
  */
-async function analyse(file: File): Promise<void> {
+async function analyse(file: File, engine: DrawingInspector): Promise<void> {
   try {
-    const info = await inspectLocalFile(file)
+    const info = await inspectLocalFile(file, engine)
     // Discard a stale result if another drawing was opened meanwhile.
     if (currentFile.value !== file) return
     localInfo.value = info
@@ -140,7 +158,10 @@ async function saveToLibrary(): Promise<void> {
 
   saving.value = true
   try {
-    const info = localInfo.value ?? (await inspectLocalFile(file))
+    // A file can only be open once the runtime loaded, but resolve defensively
+    // so the register path never assumes engine state.
+    const engine = cadRuntime.value?.engine ?? (await loadCadRuntime()).engine
+    const info = localInfo.value ?? (await inspectLocalFile(file, engine))
     localInfo.value = info
     const drawing = await save({
       name: file.name,
@@ -211,16 +232,19 @@ async function exportDwg(): Promise<void> {
   const file = currentFile.value
   if (!file) return
 
+  const runtime = cadRuntime.value
+  if (!runtime) return
+
   exporting.value = true
   try {
-    const cadDocument = AcApDocManager.instance.curDocument
+    const cadDocument = runtime.AcApDocManager.instance.curDocument
     const serialized: unknown = cadDocument.database.dxfOut(undefined, 6)
     const dxfBytes =
       typeof serialized === 'string'
         ? new TextEncoder().encode(serialized)
         : new Uint8Array(serialized as ArrayBufferLike)
 
-    const dwg = await acadrustEngine.dxfToDwg(dxfBytes, DXF_VERSION_AC1032)
+    const dwg = await runtime.engine.dxfToDwg(dxfBytes, runtime.DXF_VERSION_AC1032)
     downloadBytes(
       dwg,
       replaceExtension(cadDocument.fileName || file.name, '.dwg'),
@@ -284,11 +308,15 @@ function closeDrawing(): void {
         @open-library="libraryVisible = true"
       />
       <div v-else class="stage__viewer">
-        <MlCadViewer
+        <!-- Rendered only once the lazily-loaded runtime (and its registered
+             DWG converter) is ready; it is set before `currentFile`. -->
+        <component
+          :is="cadRuntime.MlCadViewer"
+          v-if="cadRuntime"
           :key="viewerKey"
           locale="zh"
           :local-file="currentFile"
-          :mode="AcEdOpenMode.Write"
+          :mode="cadRuntime.AcEdOpenMode.Write"
           :progressive-rendering="true"
         />
       </div>

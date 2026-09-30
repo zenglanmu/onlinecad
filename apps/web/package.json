@@ -1,0 +1,41 @@
+{
+  "name": "@onlinecad/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Vue 3 host application for the browser-local CAD viewer/editor",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.1",
+    "@mlightcad/cad-agent-plugin": "1.7.3",
+    "@mlightcad/cad-html-plugin": "1.7.3",
+    "@mlightcad/cad-pdf-plugin": "1.7.3",
+    "@mlightcad/cad-simple-viewer": "1.7.3",
+    "@mlightcad/cad-svg-plugin": "1.7.3",
+    "@mlightcad/cad-viewer": "1.7.3",
+    "@mlightcad/data-model": "^1.15.0",
+    "@mlightcad/mtext-parser": "^1.5.3",
+    "@mlightcad/mtext-renderer": "^0.13.1",
+    "@mlightcad/pdf-renderer": "1.7.3",
+    "@mlightcad/three-renderer": "1.7.3",
+    "@onlinecad/cad-acadrust": "*",
+    "@vueuse/core": "^11.1.0",
+    "element-plus": "^2.12.0",
+    "lodash-es": "4.17.21",
+    "three": "^0.172.0",
+    "vue": "^3.4.21",
+    "vue-i18n": "^11.4.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "typescript": "^5.6.3",
+    "vite": "^6.4.3",
+    "vue-tsc": "^2.1.6"
+  }
+}

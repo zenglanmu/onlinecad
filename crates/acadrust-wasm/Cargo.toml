@@ -1,0 +1,33 @@
+[package]
+name = "acadrust-wasm"
+version = "0.1.0"
+edition = "2021"
+description = "WebAssembly bridge that exposes acadrust's DWG/DXF read-write engine to JavaScript"
+license = "MPL-2.0"
+repository = "https://github.com/hakanaktt/acadrust"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+acadrust = { version = "0.5.5", default-features = false }
+# Pinned so the wasm-bindgen CLI version used by scripts/build-wasm.sh and CI
+# always matches the crate compiled into the artifact.
+wasm-bindgen = "=0.2.129"
+
+# `ahash` (pulled in by acadrust) needs an entropy source for its hash seed. On
+# wasm32-unknown-unknown the `wasm_js` backend routes that through
+# `crypto.getRandomValues`. Enabling the feature here is enough; getrandom 0.3
+# no longer needs a `--cfg getrandom_backend` opt-in for this backend.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.3", features = ["wasm_js"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+# Smaller artifact. The consequence — a Rust panic traps the whole instance
+# instead of unwinding — is handled in the TS loader, which recycles the
+# instance whenever a call traps.
+panic = "abort"

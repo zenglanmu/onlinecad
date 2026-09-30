@@ -1,0 +1,29 @@
+{
+  "name": "onlinecad",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser-local DWG/DXF viewer and editor: Vue 3 + @mlightcad/cad-viewer for rendering, acadrust (Rust/WASM) as the DWG engine, deployed on Cloudflare Workers with D1",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build:wasm": "./scripts/build-wasm.sh",
+    "fixtures": "npm run fixtures --workspace @onlinecad/cad-acadrust",
+    "test": "npm run test --workspace @onlinecad/cad-acadrust",
+    "dev": "npm run dev --workspace @onlinecad/web --",
+    "dev:host": "npm run dev --workspace @onlinecad/web -- --host 0.0.0.0",
+    "dev:worker": "npm run dev --workspace @onlinecad/worker -- --ip 0.0.0.0 --port 8787",
+    "build": "npm run build --workspace @onlinecad/web",
+    "preview": "npm run preview --workspace @onlinecad/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "deploy": "npm run deploy --workspace @onlinecad/worker",
+    "db:migrate:local": "npm run db:migrate:local --workspace @onlinecad/worker",
+    "db:migrate:remote": "npm run db:migrate:remote --workspace @onlinecad/worker"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

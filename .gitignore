@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.wrangler/
+
+# Rust
+target/
+
+# Generated: run `npm run build:wasm` (5 MB artifact, not committed)
+packages/cad-acadrust/wasm/
+
+# Local secrets / overrides
+.dev.vars
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.DS_Store
+*.log
+.idea/
+.vscode/

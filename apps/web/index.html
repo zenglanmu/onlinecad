@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="在浏览器中查看与编辑 DWG/DXF 图纸。图纸默认不上传，解析与编辑在本地完成，可选的只读分享链接由你主动生成。"
+    />
+    <title>OnlineCAD · 在线 CAD 图纸查看与编辑</title>
+    <style>
+      #boot-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        background: #0f172a;
+        color: #e2e8f0;
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          'Noto Sans SC',
+          sans-serif;
+        z-index: 9999;
+      }
+      #boot-loader .spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid rgba(226, 232, 240, 0.2);
+        border-top-color: #38bdf8;
+        border-radius: 50%;
+        animation: boot-spin 0.9s linear infinite;
+      }
+      @keyframes boot-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Replaced by the app once Vue mounts; removed in src/main.ts. -->
+    <div id="boot-loader">
+      <div class="spinner"></div>
+      <p>正在启动 CAD 引擎…</p>
+    </div>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

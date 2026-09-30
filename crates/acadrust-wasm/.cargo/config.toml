@@ -1,0 +1,8 @@
+# Only the wasm build is affected; a host `cargo test` is untouched.
+[target.wasm32-unknown-unknown]
+rustflags = [
+  # Guarantee `instance.exports.memory` exists so wasm-bindgen's generated glue
+  # can create typed-array views over the linear memory.
+  "-C",
+  "link-arg=--export-memory",
+]

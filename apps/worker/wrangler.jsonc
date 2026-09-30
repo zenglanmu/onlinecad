@@ -1,0 +1,45 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "onlinecad",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-01",
+  "observability": {
+    "enabled": true
+  },
+  // The SPA build. `not_found_handling: single-page-application` makes unknown
+  // paths return index.html instead of 404, so client-side routes work.
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  // Serve the Worker + SPA on the custom domain. `custom_domain: true` makes
+  // Cloudflare provision the DNS record and the TLS certificate for us.
+  "routes": [
+    {
+      "pattern": "cad.snakeheartgo.top",
+      "custom_domain": true
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "onlinecad",
+      // Replace with the id printed by `wrangler d1 create onlinecad`.
+      // `wrangler dev` simulates D1 locally and ignores this value.
+      "database_id": "6858bdf8-1432-435b-ab01-e5e631f5094a",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Original drawing files, but only for the drawings a user chose to share.
+  // Every other drawing still lives solely on the user's device; this bucket
+  // holds nothing unless `/api/drawings/:id/share` was called.
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "onlinecad-shares",
+      // `wrangler dev` simulates R2 locally and ignores this value.
+      "preview_bucket_name": "onlinecad-shares"
+    }
+  ]
+}

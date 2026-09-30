@@ -179,6 +179,20 @@ body {
   position: relative;
 }
 
+/*
+ * `@mlightcad/cad-viewer` roots itself in a `position: fixed`, full-viewport
+ * container. Left alone it starts at y=0, so its ribbon/menu bar slides under
+ * this app's header and its status bar sits under the viewport bottom. Re-anchor
+ * it to the (relatively positioned) viewer area so the chrome below the header
+ * is the only thing the viewer owns. The package's own `top/right/bottom/left:
+ * 0` then stretch it to that box.
+ */
+.stage__viewer .ml-cad-viewer-container,
+.share-view__viewer .ml-cad-viewer-container {
+  position: absolute;
+  z-index: 1;
+}
+
 .stage__error {
   position: absolute;
   left: 16px;
